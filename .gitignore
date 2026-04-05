@@ -1,1 +1,19 @@
-node_modules/
+# Binaries
+/dongxi
+/dongxi.exe
+*.test
+*.out
+
+# Coverage
+coverage.out
+coverage.html
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
