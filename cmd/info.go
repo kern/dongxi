@@ -6,6 +6,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/kern/dongxi/dongxi"
 	"github.com/spf13/cobra"
 )
 
@@ -17,12 +18,17 @@ var infoCmd = &cobra.Command{
 }
 
 func runInfo(cmd *cobra.Command, args []string) error {
+	cfg, err := dongxi.LoadConfig()
+	if err != nil {
+		return err
+	}
+
 	_, client, historyKey, err := loadState()
 	if err != nil {
 		return err
 	}
 
-	acct, err := client.GetAccount("") // email not needed — already authenticated
+	acct, err := client.GetAccount(cfg.Email)
 	if err != nil {
 		return fmt.Errorf("fetch account: %w", err)
 	}

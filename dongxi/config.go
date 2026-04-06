@@ -7,11 +7,23 @@ import (
 	"path/filepath"
 )
 
+// DefaultSyncInterval is the default minimum seconds between syncs.
+const DefaultSyncInterval = 60
+
 // Config holds the dongxi CLI configuration.
 type Config struct {
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	HistoryKey string `json:"history_key"`
+	Email               string `json:"email"`
+	Password            string `json:"password"`
+	HistoryKey          string `json:"history_key"`
+	SyncIntervalSeconds *int   `json:"sync_interval_seconds,omitempty"`
+}
+
+// SyncInterval returns the configured sync interval, or the default (60s).
+func (c *Config) SyncInterval() int {
+	if c.SyncIntervalSeconds != nil {
+		return *c.SyncIntervalSeconds
+	}
+	return DefaultSyncInterval
 }
 
 // ConfigDir returns the path to ~/.config/dongxi/.

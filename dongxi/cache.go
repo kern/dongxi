@@ -9,9 +9,10 @@ import (
 
 // Cache holds the locally cached Things Cloud history.
 type Cache struct {
-	HistoryKey string           `json:"history_key"`
-	ItemCount  int              `json:"item_count"`
-	Items      []map[string]any `json:"items"`
+	HistoryKey   string           `json:"history_key"`
+	ItemCount    int              `json:"item_count"`
+	LastSyncUnix int64            `json:"last_sync_unix"`
+	Items        []map[string]any `json:"items"`
 }
 
 // CachePath returns the path to ~/.config/dongxi/history.json.

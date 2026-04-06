@@ -26,6 +26,10 @@ EXCLUSIONS=(
   # Production wiring: reads real config file and calls real API client.
   "cmd/state.go:LoadState"
 
+  # LoadConfig error path — config is already loaded by loadState in tests.
+  "cmd/info.go:runInfo"
+  "cmd/reset.go:runReset"
+
   # Dead-code defensive branches inside csv.Writer (buffered; Write never
   # errors) and unreachable return after validated format switch.
   "cmd/export.go:runExport"
@@ -38,9 +42,8 @@ EXCLUSIONS=(
   # Panic branch on rand.Read failure — intentionally untestable.
   "cmd/create.go:newUUID"
 
-  # Config save after successful server reset — requires real filesystem
-  # config created by `dongxi login`.
-  "cmd/reset.go:runReset"
+  # Production wiring: reads real config, calls real API client.
+  "cmd/sync.go:Sync"
 
   # SaveConfig: error path on os.MkdirAll / os.WriteFile with real filesystem.
   "dongxi/config.go:SaveConfig"

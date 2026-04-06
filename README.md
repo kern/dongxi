@@ -230,7 +230,16 @@ Supported ops: `complete`, `reopen`, `cancel`, `trash`, `untrash`, `move`,
 | `logbook` | Show completed tasks |
 | `upcoming` | Tasks with a scheduled date, grouped by date |
 | `batch` | Apply multiple operations in one sync |
+| `sync` | Sync with Things Cloud and report changes |
 | `reset` | Reset the Things Cloud history key |
+
+### Global flags
+
+| Flag | Description |
+|---|---|
+| `--json` | Output in JSON format |
+| `--skip-sync` | Use cached data only, do not contact Things Cloud |
+| `--sync` | Force a sync even if the throttle interval has not elapsed |
 
 Run `dongxi <command> --help` for full flag details.
 
@@ -243,7 +252,8 @@ and contains:
 {
   "email": "you@example.com",
   "password": "your-password",
-  "historyKey": "abc123..."
+  "historyKey": "abc123...",
+  "sync_interval_seconds": 60
 }
 ```
 
@@ -262,6 +272,17 @@ history, which all your Things apps will pick up on their next sync.
 The cache is automatically invalidated when the history key changes (e.g. after
 `dongxi reset`). You can safely delete `history.json` at any time — it will be
 rebuilt on the next command.
+
+By default, `dongxi` syncs at most once per minute. Rapid successive commands
+reuse the cached state without hitting the network. You can override this:
+
+- `--sync` forces a fresh sync regardless of the throttle
+- `--skip-sync` uses cached data only (fully offline)
+- Set `"sync_interval_seconds"` in `config.json` to change the default interval
+  (e.g. `0` to sync on every command, `300` for five minutes)
+
+The `sync` command performs a sync and reports how many new history records were
+received and a summary of the changes.
 
 The history key identifies your sync stream. If you reset it
 (`dongxi reset`), all Things clients will need to re-sync from scratch.

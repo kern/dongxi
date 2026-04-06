@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/kern/dongxi/dongxi"
 )
@@ -35,15 +36,34 @@ func (realStateLoader) LoadState() (*thingsState, CloudClient, string, error) {
 	}
 
 	client := dongxi.NewClient(cfg.Email, cfg.Password)
-	acct, err := client.GetAccount(cfg.Email)
-	if err != nil {
-		return nil, nil, "", fmt.Errorf("fetch account: %w", err)
-	}
 
-	// Load local cache and do incremental sync.
+	// Load local cache.
 	cache, err := dongxi.LoadCache()
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("load cache: %w", err)
+	}
+
+	// Decide whether to sync: skip-sync, throttle, or force.
+	shouldSync := !flagSkipSync
+	if shouldSync && !flagSync && cache.ItemCount > 0 {
+		elapsed := time.Since(time.Unix(cache.LastSyncUnix, 0))
+		if elapsed < time.Duration(cfg.SyncInterval())*time.Second {
+			shouldSync = false
+		}
+	}
+
+	if !shouldSync {
+		if cache.ItemCount == 0 {
+			return nil, nil, "", fmt.Errorf("no cached data — run 'dongxi sync' first")
+		}
+		items := replayHistory(cache.Items)
+		s := buildState(items)
+		return s, client, cache.HistoryKey, nil
+	}
+
+	acct, err := client.GetAccount(cfg.Email)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("fetch account: %w", err)
 	}
 
 	// Invalidate cache if history key changed (e.g. after reset).
@@ -58,17 +78,13 @@ func (realStateLoader) LoadState() (*thingsState, CloudClient, string, error) {
 	}
 
 	// Merge and persist.
+	cache.HistoryKey = acct.HistoryKey
+	cache.LastSyncUnix = time.Now().Unix()
 	if len(newItems) > 0 {
-		cache.HistoryKey = acct.HistoryKey
 		cache.Items = append(cache.Items, newItems...)
 		cache.ItemCount = len(cache.Items)
-		// Best-effort save — don't fail the command if cache write fails.
-		_ = dongxi.SaveCache(cache)
-	} else if cache.HistoryKey == "" {
-		// First run with empty history — save the key so we don't re-fetch.
-		cache.HistoryKey = acct.HistoryKey
-		_ = dongxi.SaveCache(cache)
 	}
+	_ = dongxi.SaveCache(cache)
 
 	items := replayHistory(cache.Items)
 	s := buildState(items)

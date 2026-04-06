@@ -32,12 +32,17 @@ func init() {
 }
 
 func runReset(cmd *cobra.Command, args []string) error {
+	cfg, err := dongxi.LoadConfig()
+	if err != nil {
+		return err
+	}
+
 	_, client, historyKey, err := loadState()
 	if err != nil {
 		return err
 	}
 
-	acct, err := client.GetAccount("")
+	acct, err := client.GetAccount(cfg.Email)
 	if err != nil {
 		return fmt.Errorf("fetch account: %w", err)
 	}
@@ -76,7 +81,7 @@ func runReset(cmd *cobra.Command, args []string) error {
 	fmt.Printf("New history key: %s\n", resp.NewHistoryKey)
 
 	// Update local config with new history key.
-	cfg, err := dongxi.LoadConfig()
+	cfg, err = dongxi.LoadConfig()
 	if err == nil {
 		cfg.HistoryKey = resp.NewHistoryKey
 		if err := dongxi.SaveConfig(cfg); err != nil {

@@ -173,6 +173,29 @@ func TestLoadConfigPermissionError(t *testing.T) {
 	}
 }
 
+func TestSyncIntervalDefault(t *testing.T) {
+	cfg := &Config{Email: "x"}
+	if got := cfg.SyncInterval(); got != DefaultSyncInterval {
+		t.Errorf("SyncInterval() = %d, want %d", got, DefaultSyncInterval)
+	}
+}
+
+func TestSyncIntervalCustom(t *testing.T) {
+	val := 30
+	cfg := &Config{Email: "x", SyncIntervalSeconds: &val}
+	if got := cfg.SyncInterval(); got != 30 {
+		t.Errorf("SyncInterval() = %d, want 30", got)
+	}
+}
+
+func TestSyncIntervalZero(t *testing.T) {
+	val := 0
+	cfg := &Config{Email: "x", SyncIntervalSeconds: &val}
+	if got := cfg.SyncInterval(); got != 0 {
+		t.Errorf("SyncInterval() = %d, want 0", got)
+	}
+}
+
 // --- SaveConfig error when HOME is unset ---
 
 func TestSaveConfigNoHome(t *testing.T) {

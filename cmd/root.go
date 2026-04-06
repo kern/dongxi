@@ -11,6 +11,8 @@ var (
 	flagEmail    string
 	flagPassword string
 	flagJSON     bool
+	flagSkipSync bool
+	flagSync     bool
 )
 
 var rootCmd = &cobra.Command{
@@ -29,10 +31,13 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&flagJSON, "json", false, "Output in JSON format")
+	rootCmd.PersistentFlags().BoolVar(&flagSkipSync, "skip-sync", false, "Use cached data only, do not contact Things Cloud")
+	rootCmd.PersistentFlags().BoolVar(&flagSync, "sync", false, "Force a sync even if the throttle interval has not elapsed")
 
 	// Auth
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(infoCmd)
+	rootCmd.AddCommand(syncCmd)
 
 	// Views
 	rootCmd.AddCommand(areasCmd)
