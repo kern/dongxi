@@ -168,7 +168,11 @@ func runList(cmd *cobra.Command, args []string) error {
 		filtered = append(filtered, t)
 	}
 
-	sortByIndex(filtered)
+	if showToday {
+		sortByTodayIndex(filtered)
+	} else {
+		sortByIndex(filtered)
+	}
 
 	if flagJSON {
 		var out []ItemOutput
@@ -335,5 +339,12 @@ func toStr(v any) string {
 func sortByIndex(items []replayedItem) {
 	sort.SliceStable(items, func(i, j int) bool {
 		return toInt(items[i].fields[dongxi.FieldIndex]) < toInt(items[j].fields[dongxi.FieldIndex])
+	})
+}
+
+// sortByTodayIndex sorts replayed items by their ti field (ascending).
+func sortByTodayIndex(items []replayedItem) {
+	sort.SliceStable(items, func(i, j int) bool {
+		return toInt(items[i].fields[dongxi.FieldTodayIndex]) < toInt(items[j].fields[dongxi.FieldTodayIndex])
 	})
 }

@@ -88,7 +88,7 @@ type summaryTodayItem struct {
 	// Sorting fields (not exported to JSON).
 	areaIndex    int
 	projectIndex int
-	taskIndex    int
+	todayIndex   int
 }
 
 type summaryOutput struct {
@@ -175,7 +175,7 @@ func runSummary(cmd *cobra.Command, args []string) error {
 					UUID:      item.uuid,
 					Title:     title,
 					Evening:   evening,
-					taskIndex: toInt(item.fields[dongxi.FieldIndex]),
+					todayIndex: toInt(item.fields[dongxi.FieldTodayIndex]),
 				}
 				// Resolve area (direct or inherited from project).
 				areaUUID := firstString(item.fields[dongxi.FieldAreaIDs])
@@ -489,7 +489,7 @@ func printSummaryHuman(out summaryOutput) {
 			if items[i].projectIndex != items[j].projectIndex {
 				return items[i].projectIndex < items[j].projectIndex
 			}
-			return items[i].taskIndex < items[j].taskIndex
+			return items[i].todayIndex < items[j].todayIndex
 		})
 
 		// Group by area then project.
