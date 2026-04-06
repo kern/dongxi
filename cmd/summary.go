@@ -436,22 +436,17 @@ func runSummary(cmd *cobra.Command, args []string) error {
 func printSummaryHuman(out summaryOutput) {
 	o := out.Overview
 
-	fmt.Println("THINGS SUMMARY")
-	fmt.Println("==============")
-	fmt.Println()
-	fmt.Println("Overview:")
-	fmt.Printf("  Tasks: %d open, %d completed, %d cancelled (%d total)\n",
+	fmt.Printf("Tasks: %d open, %d completed, %d cancelled (%d total)\n",
 		o.OpenTasks, o.CompletedTasks, o.CancelledTasks, o.TotalTasks)
-	fmt.Printf("  Inbox: %d | Today: %d (%d evening) | Someday: %d\n",
+	fmt.Printf("Inbox: %d | Today: %d (%d evening) | Someday: %d\n",
 		o.InboxCount, o.TodayCount, o.EveningCount, o.SomedayCount)
-	fmt.Printf("  Upcoming: %d | Overdue: %d\n", o.UpcomingCount, o.OverdueCount)
-	fmt.Printf("  Projects: %d open, %d completed (%d total)\n",
+	fmt.Printf("Upcoming: %d | Overdue: %d\n", o.UpcomingCount, o.OverdueCount)
+	fmt.Printf("Projects: %d open, %d completed (%d total)\n",
 		o.OpenProjects, o.CompletedProjects, o.TotalProjects)
-	fmt.Printf("  Areas: %d\n", o.TotalAreas)
+	fmt.Printf("Areas: %d\n", o.TotalAreas)
 
 	if len(out.Areas) > 0 || len(out.UnassignedProjects) > 0 {
 		fmt.Println()
-		fmt.Println("Areas & Projects:")
 		for _, a := range out.Areas {
 			fmt.Printf("  %s\n", a.Title)
 			for _, p := range a.Projects {

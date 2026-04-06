@@ -40,9 +40,6 @@ func TestRunSummaryEmpty(t *testing.T) {
 	setupMockState(t, []map[string]any{})
 	output := captureSummaryOutput(t, false)
 
-	if !strings.Contains(output, "THINGS SUMMARY") {
-		t.Error("expected header")
-	}
 	if !strings.Contains(output, "Tasks: 0 open, 0 completed, 0 cancelled (0 total)") {
 		t.Errorf("expected zero counts, got:\n%s", output)
 	}
@@ -230,9 +227,6 @@ func TestRunSummaryWithAreas(t *testing.T) {
 
 	output := captureSummaryOutput(t, false)
 
-	if !strings.Contains(output, "Areas & Projects:") {
-		t.Error("expected Areas & Projects section")
-	}
 	if !strings.Contains(output, "Work") {
 		t.Error("expected Work area")
 	}
