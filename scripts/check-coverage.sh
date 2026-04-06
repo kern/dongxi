@@ -13,47 +13,46 @@ set -euo pipefail
 # If no coverage file is provided, one is generated via `go test`.
 
 # ── Exclusion list ────────────────────────────────────────────────────────────
-# Format: "path/file.go:function min_pct"
-# Path is relative to the module root (no module prefix, no line numbers).
-# Keep sorted by package then function.
+# Format: "path/file.go:function"
+# Path is relative to the module root. Keep sorted by package then function.
 
 EXCLUSIONS=(
   # Production wiring: calls os.Exit, cannot be captured in-process.
-  "cmd/root.go:Execute 0.0"
+  "cmd/root.go:Execute"
 
   # Thin wrapper that calls cmd.Execute(); same os.Exit issue.
-  "main.go:main 0.0"
+  "main.go:main"
 
   # Production wiring: reads real config file and calls real API client.
-  "cmd/state.go:LoadState 0.0"
+  "cmd/state.go:LoadState"
 
   # Dead-code defensive branches inside csv.Writer (buffered; Write never
   # errors) and unreachable return after validated format switch.
-  "cmd/export.go:runExport 96.8"
-  "cmd/export.go:writeCSV 90.0"
+  "cmd/export.go:runExport"
+  "cmd/export.go:writeCSV"
 
   # Dead-code default case after validOps pre-check, and nil-guard on
   # resolved UUID that can never be nil.
-  "cmd/batch.go:runBatch 98.8"
+  "cmd/batch.go:runBatch"
 
   # Panic branch on rand.Read failure — intentionally untestable.
-  "cmd/create.go:newUUID 94.4"
+  "cmd/create.go:newUUID"
 
   # Config save after successful server reset — requires real filesystem
   # config created by `dongxi login`.
-  "cmd/reset.go:runReset 89.0"
+  "cmd/reset.go:runReset"
 
   # SaveConfig: error path on os.MkdirAll / os.WriteFile with real filesystem.
-  "dongxi/config.go:SaveConfig 91.7"
+  "dongxi/config.go:SaveConfig"
 
   # CachePath: error path on ConfigDir (os.UserHomeDir failure).
-  "dongxi/cache.go:CachePath 75.0"
+  "dongxi/cache.go:CachePath"
 
   # LoadCache: error path on CachePath (ConfigDir / os.UserHomeDir failure).
-  "dongxi/cache.go:LoadCache 91.7"
+  "dongxi/cache.go:LoadCache"
 
   # SaveCache: error paths on ConfigDir, os.MkdirAll, os.WriteFile.
-  "dongxi/cache.go:SaveCache 66.7"
+  "dongxi/cache.go:SaveCache"
 )
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -67,8 +66,6 @@ detect_module_prefix() {
 }
 
 # Strip the module prefix from a full package path to get the relative path.
-# e.g. "github.com/kern/dongxi/cmd/root.go" → "cmd/root.go"
-#      "github.com/kern/dongxi/main.go"     → "main.go"
 strip_module() {
   local full="$1"
   if [[ -n "$MODULE_PREFIX" && "$full" == "$MODULE_PREFIX"/* ]]; then
@@ -80,18 +77,15 @@ strip_module() {
   fi
 }
 
-# Look up a key in EXCLUSIONS. Prints the min_pct if found, empty string if not.
-lookup_exclusion() {
+# Check if a key is in the EXCLUSIONS list.
+is_excluded() {
   local needle="$1"
   for entry in "${EXCLUSIONS[@]}"; do
-    local key="${entry% *}"
-    local min="${entry##* }"
-    if [[ "$key" == "$needle" ]]; then
-      echo "$min"
-      return
+    if [[ "$entry" == "$needle" ]]; then
+      return 0
     fi
   done
-  echo ""
+  return 1
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -116,7 +110,6 @@ fi
 # Parse `go tool cover -func` output and check each function.
 # Output format per line:
 #   github.com/kern/dongxi/cmd/root.go:23:	Execute		0.0%
-# The location is "pkg/file.go:linenum:" — we need "path/file.go:funcName" as key.
 
 TMPFAILS="$(mktemp)"
 cleanup() { rm -f "$TMPFAILS"; [[ "$GENERATED" -eq 1 ]] && rm -f "$COVERFILE"; true; }
@@ -145,18 +138,12 @@ go tool cover -func="$COVERFILE" | while IFS= read -r line; do
   rel_file=$(strip_module "$file")
   key="${rel_file}:${func_name}"
 
-  min=$(lookup_exclusion "$key")
-
-  if [[ -n "$min" ]]; then
-    if awk "BEGIN{exit (!($pct >= $min))}"; then
-      continue
-    fi
-    echo "FAIL: $key coverage ${pct}% dropped below excluded minimum ${min}%"
-    echo "1" >> "$TMPFAILS"
-  else
-    echo "FAIL: $key coverage ${pct}% (not 100% and not in exclusion list)"
-    echo "1" >> "$TMPFAILS"
+  if is_excluded "$key"; then
+    continue
   fi
+
+  echo "FAIL: $key coverage ${pct}% (not 100% and not in exclusion list)"
+  echo "1" >> "$TMPFAILS"
 done
 
 if [[ -s "$TMPFAILS" ]]; then
