@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"testing"
+	"time"
 
 	"github.com/kern/dongxi/dongxi"
 )
@@ -181,9 +182,12 @@ func makeHeading(uuid, title, projectUUID string) map[string]any {
 	}
 }
 
-// withToday marks a task as being in the Today view by setting todayIndex.
+// withToday marks a task as being in the Today view by setting todayIndex and todayIndexRef.
 func withToday(p map[string]any) {
+	now := nowFunc()
+	todayMidnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	p[dongxi.FieldTodayIndex] = float64(dongxi.DefaultTodayIndex)
+	p[dongxi.FieldTodayIndexRef] = float64(todayMidnight.Unix())
 }
 
 func makeChecklistItem(uuid, title, taskUUID string) map[string]any {

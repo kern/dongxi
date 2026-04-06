@@ -455,11 +455,35 @@ func TestPrintJSON(t *testing.T) {
 
 func TestIsTodayWithTodayIndex(t *testing.T) {
 	now := time.Date(2026, 4, 5, 12, 0, 0, 0, time.UTC)
+	todayMidnight := time.Date(2026, 4, 5, 0, 0, 0, 0, time.UTC)
+	fields := map[string]any{
+		dongxi.FieldTodayIndex:    float64(-485),
+		dongxi.FieldTodayIndexRef: float64(todayMidnight.Unix()),
+	}
+	if !isToday(fields, now) {
+		t.Error("task with todayIndex and today's tir should be today")
+	}
+}
+
+func TestIsTodayWithStaleTodayIndex(t *testing.T) {
+	now := time.Date(2026, 4, 5, 12, 0, 0, 0, time.UTC)
+	yesterday := time.Date(2026, 4, 4, 0, 0, 0, 0, time.UTC)
+	fields := map[string]any{
+		dongxi.FieldTodayIndex:    float64(-485),
+		dongxi.FieldTodayIndexRef: float64(yesterday.Unix()),
+	}
+	if isToday(fields, now) {
+		t.Error("task with stale todayIndexRef should not be today")
+	}
+}
+
+func TestIsTodayWithTodayIndexNoRef(t *testing.T) {
+	now := time.Date(2026, 4, 5, 12, 0, 0, 0, time.UTC)
 	fields := map[string]any{
 		dongxi.FieldTodayIndex: float64(-485),
 	}
-	if !isToday(fields, now) {
-		t.Error("task with todayIndex should be today")
+	if isToday(fields, now) {
+		t.Error("task with todayIndex but no tir should not be today")
 	}
 }
 

@@ -236,15 +236,21 @@ func printJSON(v any) error {
 // Things shows a task in Today when it has a todayIndex set, or when its
 // scheduled date is today or earlier.
 func isToday(fields map[string]any, now time.Time) bool {
-	// Has todayIndex set (explicitly moved to Today).
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	tomorrow := todayStart.AddDate(0, 0, 1)
+
+	// Has todayIndex set — but only counts if todayIndexRef is today.
 	if ti := toFloat(fields[dongxi.FieldTodayIndex]); ti != 0 {
-		return true
+		if tir := toFloat(fields[dongxi.FieldTodayIndexRef]); tir > 0 {
+			ref := time.Unix(int64(tir), 0).UTC()
+			if !ref.Before(todayStart) && ref.Before(tomorrow) {
+				return true
+			}
+		}
 	}
 	// Scheduled date is today or earlier.
 	if sr := toFloat(fields[dongxi.FieldScheduledDate]); sr > 0 {
 		scheduled := time.Unix(int64(sr), 0).UTC()
-		todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-		tomorrow := todayStart.AddDate(0, 0, 1)
 		if scheduled.Before(tomorrow) {
 			return true
 		}
