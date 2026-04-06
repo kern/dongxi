@@ -362,10 +362,12 @@ func TestRunListProjectGroupedWithHeadings(t *testing.T) {
 			p[dongxi.FieldProjectIDs] = []any{"proj-1"}
 			p[dongxi.FieldActionGroupIDs] = []any{"heading-1"}
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 		makeTask("task-2", "Named task", func(p map[string]any) {
 			p[dongxi.FieldProjectIDs] = []any{"proj-1"}
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 	})
 	flagListFilter = "today"
@@ -402,16 +404,19 @@ func TestRunListProjectGroupedMultipleHeadings(t *testing.T) {
 		makeTask("task-1", "No heading task", func(p map[string]any) {
 			p[dongxi.FieldProjectIDs] = []any{"proj-1"}
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 		makeTask("task-2", "Design task", func(p map[string]any) {
 			p[dongxi.FieldProjectIDs] = []any{"proj-1"}
 			p[dongxi.FieldActionGroupIDs] = []any{"heading-1"}
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 		makeTask("task-3", "Dev task", func(p map[string]any) {
 			p[dongxi.FieldProjectIDs] = []any{"proj-1"}
 			p[dongxi.FieldActionGroupIDs] = []any{"heading-2"}
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 	})
 	flagListFilter = "today"
@@ -478,6 +483,7 @@ func TestRunListProjectGroupedUnknownHeading(t *testing.T) {
 			p[dongxi.FieldProjectIDs] = []any{"proj-1"}
 			p[dongxi.FieldActionGroupIDs] = []any{"unknown-heading"}
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 	})
 	flagListFilter = "today"
@@ -600,6 +606,7 @@ func TestRunListProjectEmptyHeading(t *testing.T) {
 		makeTask("task-1", "Task without heading", func(p map[string]any) {
 			p[dongxi.FieldProjectIDs] = []any{"proj-1"}
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 	})
 	flagListFilter = "today"

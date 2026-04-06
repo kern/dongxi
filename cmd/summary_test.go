@@ -77,11 +77,13 @@ func TestRunSummaryBasic(t *testing.T) {
 		makeTask("task-2", "Today morning", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldStartBucket] = float64(0)
+			withToday(p)
 		}),
 		// Open today task (evening)
 		makeTask("task-3", "Today evening", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldStartBucket] = float64(1)
+			withToday(p)
 		}),
 		// Someday task
 		makeTask("task-4", "Someday task", func(p map[string]any) {
@@ -124,6 +126,7 @@ func TestRunSummaryJSON(t *testing.T) {
 			p[dongxi.FieldProjectIDs] = []any{"proj-1"}
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldTagIDs] = []any{"tag-1"}
+			withToday(p)
 		}),
 		makeTask("task-2", "Inbox task", func(p map[string]any) {
 			p[dongxi.FieldCreationDate] = float64(time.Now().Unix())
@@ -131,10 +134,12 @@ func TestRunSummaryJSON(t *testing.T) {
 		makeTask("task-3", "Overdue task", func(p map[string]any) {
 			p[dongxi.FieldDeadline] = yesterday
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 		makeTask("task-4", "Upcoming task", func(p map[string]any) {
 			p[dongxi.FieldScheduledDate] = tomorrow
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 	})
 
@@ -281,10 +286,12 @@ func TestRunSummaryTags(t *testing.T) {
 		makeTask("task-1", "Tagged task 1", func(p map[string]any) {
 			p[dongxi.FieldTagIDs] = []any{"tag-1"}
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 		makeTask("task-2", "Tagged task 2", func(p map[string]any) {
 			p[dongxi.FieldTagIDs] = []any{"tag-1"}
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 		makeTask("task-3", "Waiting task", func(p map[string]any) {
 			p[dongxi.FieldTagIDs] = []any{"tag-2"}
@@ -361,19 +368,23 @@ func TestRunSummaryToday(t *testing.T) {
 		makeTask("task-1", "Morning task 1", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldStartBucket] = float64(0)
+			withToday(p)
 		}),
 		makeTask("task-2", "Morning task 2", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldProjectIDs] = []any{"proj-1"}
+			withToday(p)
 		}),
 		makeTask("task-3", "Evening task", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldStartBucket] = float64(1)
+			withToday(p)
 		}),
 		makeTag("tag-1", "important"),
 		makeTask("task-4", "Tagged today", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldTagIDs] = []any{"tag-1"}
+			withToday(p)
 		}),
 	})
 
@@ -436,10 +447,12 @@ func TestRunSummaryUpcoming(t *testing.T) {
 		makeTask("task-1", "Future task", func(p map[string]any) {
 			p[dongxi.FieldScheduledDate] = tomorrow
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 		makeTask("task-2", "Past scheduled", func(p map[string]any) {
 			p[dongxi.FieldScheduledDate] = yesterday
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 	})
 
@@ -463,10 +476,12 @@ func TestRunSummaryOverdue(t *testing.T) {
 		makeTask("task-1", "Overdue task", func(p map[string]any) {
 			p[dongxi.FieldDeadline] = yesterday
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 		makeTask("task-2", "Future deadline", func(p map[string]any) {
 			p[dongxi.FieldDeadline] = tomorrow
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 	})
 
@@ -644,6 +659,7 @@ func TestRunSummaryTodayOnlyMorning(t *testing.T) {
 		makeTask("task-1", "Only morning", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldStartBucket] = float64(0)
+			withToday(p)
 		}),
 	})
 
@@ -662,6 +678,7 @@ func TestRunSummaryTodayOnlyEvening(t *testing.T) {
 		makeTask("task-1", "Only evening", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldStartBucket] = float64(1)
+			withToday(p)
 		}),
 	})
 
@@ -845,6 +862,7 @@ func TestRunSummaryUntitledTodayTask(t *testing.T) {
 	setupMockState(t, []map[string]any{
 		makeTask("task-1", "", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 	})
 	output := captureSummaryOutput(t, false)

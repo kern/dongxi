@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/kern/dongxi/dongxi"
 )
@@ -449,5 +450,57 @@ func TestPrintJSON(t *testing.T) {
 	}
 	if result["hello"] != "world" {
 		t.Errorf("got %v, want {hello: world}", result)
+	}
+}
+
+func TestIsTodayWithTodayIndex(t *testing.T) {
+	now := time.Date(2026, 4, 5, 12, 0, 0, 0, time.UTC)
+	fields := map[string]any{
+		dongxi.FieldTodayIndex: float64(-485),
+	}
+	if !isToday(fields, now) {
+		t.Error("task with todayIndex should be today")
+	}
+}
+
+func TestIsTodayWithScheduledToday(t *testing.T) {
+	now := time.Date(2026, 4, 5, 12, 0, 0, 0, time.UTC)
+	// Scheduled for today at midnight UTC.
+	scheduled := time.Date(2026, 4, 5, 0, 0, 0, 0, time.UTC)
+	fields := map[string]any{
+		dongxi.FieldScheduledDate: float64(scheduled.Unix()),
+	}
+	if !isToday(fields, now) {
+		t.Error("task scheduled for today should be today")
+	}
+}
+
+func TestIsTodayWithScheduledPast(t *testing.T) {
+	now := time.Date(2026, 4, 5, 12, 0, 0, 0, time.UTC)
+	scheduled := time.Date(2026, 4, 3, 0, 0, 0, 0, time.UTC)
+	fields := map[string]any{
+		dongxi.FieldScheduledDate: float64(scheduled.Unix()),
+	}
+	if !isToday(fields, now) {
+		t.Error("task scheduled in the past should be today")
+	}
+}
+
+func TestIsTodayWithScheduledFuture(t *testing.T) {
+	now := time.Date(2026, 4, 5, 12, 0, 0, 0, time.UTC)
+	scheduled := time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC)
+	fields := map[string]any{
+		dongxi.FieldScheduledDate: float64(scheduled.Unix()),
+	}
+	if isToday(fields, now) {
+		t.Error("task scheduled in the future should not be today")
+	}
+}
+
+func TestIsTodayNoIndicators(t *testing.T) {
+	now := time.Date(2026, 4, 5, 12, 0, 0, 0, time.UTC)
+	fields := map[string]any{}
+	if isToday(fields, now) {
+		t.Error("task with no todayIndex or scheduledDate should not be today")
 	}
 }

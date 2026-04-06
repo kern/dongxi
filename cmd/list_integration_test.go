@@ -43,12 +43,89 @@ func TestRunListInbox(t *testing.T) {
 	}
 }
 
+func TestRunListAnytime(t *testing.T) {
+	resetListFlags(t)
+	setupMockState(t, []map[string]any{
+		makeTask("task-1", "Anytime task", func(p map[string]any) {
+			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+		}),
+		makeTask("task-2", "Today task", func(p map[string]any) {
+			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
+		}),
+	})
+
+	flagListFilter = "anytime"
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runList(nil, nil)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+	if !bytes.Contains([]byte(output), []byte("Anytime task")) {
+		t.Error("expected Anytime task in output")
+	}
+	if !bytes.Contains([]byte(output), []byte("Today task")) {
+		t.Error("expected Today task in anytime filter (anytime includes all)")
+	}
+}
+
+func TestRunListTodayFiltersAnytime(t *testing.T) {
+	resetListFlags(t)
+	setupMockState(t, []map[string]any{
+		makeTask("task-1", "Anytime only", func(p map[string]any) {
+			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+		}),
+		makeTask("task-2", "Today task", func(p map[string]any) {
+			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
+		}),
+	})
+
+	flagListFilter = "today"
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runList(nil, nil)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+	if bytes.Contains([]byte(output), []byte("Anytime only")) {
+		t.Error("should not show anytime-only task in today filter")
+	}
+	if !bytes.Contains([]byte(output), []byte("Today task")) {
+		t.Error("expected Today task in today filter")
+	}
+}
+
 func TestRunListToday(t *testing.T) {
 	resetListFlags(t)
 	setupMockState(t, []map[string]any{
 		makeTask("task-1", "Inbox task"),
 		makeTask("task-2", "Today task", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			withToday(p)
 		}),
 	})
 
@@ -81,10 +158,12 @@ func TestRunListEvening(t *testing.T) {
 		makeTask("task-1", "Evening task", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldStartBucket] = float64(1)
+			withToday(p)
 		}),
 		makeTask("task-2", "Today task", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldStartBucket] = float64(0)
+			withToday(p)
 		}),
 	})
 

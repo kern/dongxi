@@ -152,6 +152,9 @@ func runSummary(cmd *cobra.Command, args []string) error {
 				}
 				inboxItems = append(inboxItems, inboxItem)
 			case dongxi.TaskDestinationAnytime:
+				if !isToday(item.fields, now) {
+					continue
+				}
 				overview.TodayCount++
 				evening := toInt(item.fields[dongxi.FieldStartBucket]) == 1
 				if evening {

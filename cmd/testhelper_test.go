@@ -181,6 +181,11 @@ func makeHeading(uuid, title, projectUUID string) map[string]any {
 	}
 }
 
+// withToday marks a task as being in the Today view by setting todayIndex.
+func withToday(p map[string]any) {
+	p[dongxi.FieldTodayIndex] = float64(dongxi.DefaultTodayIndex)
+}
+
 func makeChecklistItem(uuid, title, taskUUID string) map[string]any {
 	return map[string]any{
 		uuid: map[string]any{

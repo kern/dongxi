@@ -49,17 +49,23 @@ func runList(cmd *cobra.Command, args []string) error {
 	showCompleted := false
 	showTrashed := false
 	showEvening := false
+	showToday := false
 	switch strings.ToLower(flagListFilter) {
 	case "inbox":
 		d := int(dongxi.TaskDestinationInbox)
 		destFilter = &d
-	case "today", "anytime":
+	case "today":
+		d := int(dongxi.TaskDestinationAnytime)
+		destFilter = &d
+		showToday = true
+	case "anytime":
 		d := int(dongxi.TaskDestinationAnytime)
 		destFilter = &d
 	case "evening":
 		d := int(dongxi.TaskDestinationAnytime)
 		destFilter = &d
 		showEvening = true
+		showToday = true
 	case "someday":
 		d := int(dongxi.TaskDestinationSomeday)
 		destFilter = &d
@@ -130,6 +136,9 @@ func runList(cmd *cobra.Command, args []string) error {
 		}
 
 		if destFilter != nil && toInt(t.fields[dongxi.FieldDestination]) != *destFilter {
+			continue
+		}
+		if showToday && !isToday(t.fields, nowFunc()) {
 			continue
 		}
 		if showEvening && toInt(t.fields[dongxi.FieldStartBucket]) != 1 {
