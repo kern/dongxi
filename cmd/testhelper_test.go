@@ -143,15 +143,19 @@ func makeProject(uuid, title string, opts ...func(map[string]any)) map[string]an
 	}
 }
 
-func makeArea(uuid, title string) map[string]any {
+func makeArea(uuid, title string, opts ...func(map[string]any)) map[string]any {
+	p := map[string]any{
+		dongxi.FieldTitle:   title,
+		dongxi.FieldTrashed: false,
+	}
+	for _, opt := range opts {
+		opt(p)
+	}
 	return map[string]any{
 		uuid: map[string]any{
-			dongxi.CommitKeyType:   float64(dongxi.ItemTypeCreate),
-			dongxi.CommitKeyEntity: string(dongxi.EntityArea),
-			dongxi.CommitKeyPayload: map[string]any{
-				dongxi.FieldTitle:   title,
-				dongxi.FieldTrashed: false,
-			},
+			dongxi.CommitKeyType:    float64(dongxi.ItemTypeCreate),
+			dongxi.CommitKeyEntity:  string(dongxi.EntityArea),
+			dongxi.CommitKeyPayload: p,
 		},
 	}
 }

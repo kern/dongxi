@@ -80,9 +80,15 @@ type summaryInboxItem struct {
 type summaryTodayItem struct {
 	UUID    string   `json:"uuid"`
 	Title   string   `json:"title"`
+	Area    string   `json:"area,omitempty"`
 	Project string   `json:"project,omitempty"`
 	Evening bool     `json:"evening"`
 	Tags    []string `json:"tags,omitempty"`
+
+	// Sorting fields (not exported to JSON).
+	areaIndex    int
+	projectIndex int
+	taskIndex    int
 }
 
 type summaryOutput struct {
@@ -166,12 +172,27 @@ func runSummary(cmd *cobra.Command, args []string) error {
 					title = "(untitled)"
 				}
 				todayItem := summaryTodayItem{
-					UUID:    item.uuid,
-					Title:   title,
-					Evening: evening,
+					UUID:      item.uuid,
+					Title:     title,
+					Evening:   evening,
+					taskIndex: toInt(item.fields[dongxi.FieldIndex]),
 				}
+				// Resolve area (direct or inherited from project).
+				areaUUID := firstString(item.fields[dongxi.FieldAreaIDs])
 				if projUUID := firstString(item.fields[dongxi.FieldProjectIDs]); projUUID != "" {
 					todayItem.Project = s.projectTitle(projUUID)
+					if proj, ok := s.projects[projUUID]; ok {
+						todayItem.projectIndex = toInt(proj.fields[dongxi.FieldIndex])
+						if areaUUID == "" {
+							areaUUID = firstString(proj.fields[dongxi.FieldAreaIDs])
+						}
+					}
+				}
+				if areaUUID != "" {
+					todayItem.Area = s.areaTitle(areaUUID)
+					if a, ok := s.areas[areaUUID]; ok {
+						todayItem.areaIndex = toInt(a.fields[dongxi.FieldIndex])
+					}
 				}
 				if tg := toStringSlice(item.fields[dongxi.FieldTagIDs]); len(tg) > 0 {
 					var tagNames []string
@@ -426,7 +447,7 @@ func printSummaryHuman(out summaryOutput) {
 	fmt.Printf("  Upcoming: %d | Overdue: %d\n", o.UpcomingCount, o.OverdueCount)
 	fmt.Printf("  Projects: %d open, %d completed (%d total)\n",
 		o.OpenProjects, o.CompletedProjects, o.TotalProjects)
-	fmt.Printf("  Areas: %d | Tags: %d\n", o.TotalAreas, o.TotalTags)
+	fmt.Printf("  Areas: %d\n", o.TotalAreas)
 
 	if len(out.Areas) > 0 || len(out.UnassignedProjects) > 0 {
 		fmt.Println()
@@ -446,18 +467,6 @@ func printSummaryHuman(out summaryOutput) {
 		}
 	}
 
-	if len(out.Tags) > 0 {
-		fmt.Println()
-		fmt.Print("Tags:\n  ")
-		for i, t := range out.Tags {
-			if i > 0 {
-				fmt.Print(" | ")
-			}
-			fmt.Printf("%s (%d tasks)", t.Title, t.TaskCount)
-		}
-		fmt.Println()
-	}
-
 	if len(out.Inbox) > 0 {
 		fmt.Println()
 		fmt.Printf("Inbox (%d):\n", len(out.Inbox))
@@ -470,27 +479,45 @@ func printSummaryHuman(out summaryOutput) {
 		fmt.Println()
 		fmt.Printf("Today (%d):\n", len(out.Today))
 
-		// Split morning/evening.
-		var morning, evening []summaryTodayItem
-		for _, item := range out.Today {
-			if item.Evening {
-				evening = append(evening, item)
-			} else {
-				morning = append(morning, item)
+		// Sort by area index, then project index, then task index.
+		items := make([]summaryTodayItem, len(out.Today))
+		copy(items, out.Today)
+		sort.SliceStable(items, func(i, j int) bool {
+			if items[i].areaIndex != items[j].areaIndex {
+				return items[i].areaIndex < items[j].areaIndex
 			}
-		}
+			if items[i].projectIndex != items[j].projectIndex {
+				return items[i].projectIndex < items[j].projectIndex
+			}
+			return items[i].taskIndex < items[j].taskIndex
+		})
 
-		if len(morning) > 0 {
-			fmt.Println("  Morning:")
-			for _, item := range morning {
-				fmt.Printf("    %s\n", item.Title)
+		// Group by area then project.
+		lastArea, lastProject := "", ""
+		for _, item := range items {
+			if item.Area != lastArea {
+				lastArea = item.Area
+				lastProject = ""
+				if item.Area != "" {
+					fmt.Printf("  %s:\n", item.Area)
+				}
 			}
-		}
-		if len(evening) > 0 {
-			fmt.Println("  Evening:")
-			for _, item := range evening {
-				fmt.Printf("    %s\n", item.Title)
+			if item.Project != "" && item.Project != lastProject {
+				lastProject = item.Project
+				fmt.Printf("    %s:\n", item.Project)
 			}
+			prefix := "  "
+			if item.Area != "" {
+				prefix = "    "
+			}
+			if item.Project != "" {
+				prefix = "      "
+			}
+			evening := ""
+			if item.Evening {
+				evening = " (evening)"
+			}
+			fmt.Printf("%s%s%s\n", prefix, item.Title, evening)
 		}
 	}
 }

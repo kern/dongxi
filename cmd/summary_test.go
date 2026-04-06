@@ -49,8 +49,8 @@ func TestRunSummaryEmpty(t *testing.T) {
 	if !strings.Contains(output, "Projects: 0 open, 0 completed (0 total)") {
 		t.Error("expected zero project counts")
 	}
-	if !strings.Contains(output, "Areas: 0 | Tags: 0") {
-		t.Error("expected zero areas/tags")
+	if !strings.Contains(output, "Areas: 0") {
+		t.Error("expected zero areas")
 	}
 }
 
@@ -298,19 +298,7 @@ func TestRunSummaryTags(t *testing.T) {
 		}),
 	})
 
-	output := captureSummaryOutput(t, false)
-
-	if !strings.Contains(output, "Tags:") {
-		t.Error("expected Tags section")
-	}
-	if !strings.Contains(output, "urgent (2 tasks)") {
-		t.Errorf("expected 'urgent (2 tasks)', got:\n%s", output)
-	}
-	if !strings.Contains(output, "waiting (1 tasks)") {
-		t.Errorf("expected 'waiting (1 tasks)', got:\n%s", output)
-	}
-
-	// JSON
+	// Tags are not shown in human output, only JSON.
 	jsonOutput := captureSummaryOutput(t, true)
 	var result summaryOutput
 	if err := json.Unmarshal([]byte(jsonOutput), &result); err != nil {
@@ -364,20 +352,39 @@ func TestRunSummaryInbox(t *testing.T) {
 
 func TestRunSummaryToday(t *testing.T) {
 	setupMockState(t, []map[string]any{
-		makeProject("proj-1", "My Project"),
-		makeTask("task-1", "Morning task 1", func(p map[string]any) {
+		makeArea("area-1", "Work", func(p map[string]any) {
+			p[dongxi.FieldIndex] = float64(10)
+		}),
+		makeArea("area-2", "Personal", func(p map[string]any) {
+			p[dongxi.FieldIndex] = float64(-10)
+		}),
+		makeProject("proj-1", "My Project", func(p map[string]any) {
+			p[dongxi.FieldAreaIDs] = []any{"area-1"}
+			p[dongxi.FieldIndex] = float64(5)
+		}),
+		makeProject("proj-2", "Side Project", func(p map[string]any) {
+			p[dongxi.FieldAreaIDs] = []any{"area-1"}
+			p[dongxi.FieldIndex] = float64(-5)
+		}),
+		makeTask("task-1", "Standalone task", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldStartBucket] = float64(0)
 			withToday(p)
 		}),
-		makeTask("task-2", "Morning task 2", func(p map[string]any) {
+		makeTask("task-2", "Project task", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldProjectIDs] = []any{"proj-1"}
+			withToday(p)
+		}),
+		makeTask("task-5", "Side project task", func(p map[string]any) {
+			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+			p[dongxi.FieldProjectIDs] = []any{"proj-2"}
 			withToday(p)
 		}),
 		makeTask("task-3", "Evening task", func(p map[string]any) {
 			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
 			p[dongxi.FieldStartBucket] = float64(1)
+			p[dongxi.FieldAreaIDs] = []any{"area-2"}
 			withToday(p)
 		}),
 		makeTag("tag-1", "important"),
@@ -390,20 +397,29 @@ func TestRunSummaryToday(t *testing.T) {
 
 	output := captureSummaryOutput(t, false)
 
-	if !strings.Contains(output, "Today (4):") {
-		t.Errorf("expected 'Today (4):', got:\n%s", output)
+	if !strings.Contains(output, "Today (5):") {
+		t.Errorf("expected 'Today (5):', got:\n%s", output)
 	}
-	if !strings.Contains(output, "Morning:") {
-		t.Error("expected Morning section")
+	if !strings.Contains(output, "Standalone task") {
+		t.Error("expected Standalone task")
 	}
-	if !strings.Contains(output, "Evening:") {
-		t.Error("expected Evening section")
+	if !strings.Contains(output, "Work:") {
+		t.Errorf("expected area heading 'Work:', got:\n%s", output)
 	}
-	if !strings.Contains(output, "Morning task 1") {
-		t.Error("expected Morning task 1")
+	if !strings.Contains(output, "My Project:") {
+		t.Errorf("expected project heading 'My Project:', got:\n%s", output)
 	}
 	if !strings.Contains(output, "Evening task") {
 		t.Error("expected Evening task")
+	}
+	if !strings.Contains(output, "(evening)") {
+		t.Error("expected (evening) marker")
+	}
+	// Personal (ix=-10) should appear before Work (ix=10).
+	personalIdx := strings.Index(output, "Personal:")
+	workIdx := strings.Index(output, "Work:")
+	if personalIdx < 0 || workIdx < 0 || personalIdx > workIdx {
+		t.Errorf("expected Personal before Work in output:\n%s", output)
 	}
 
 	// JSON: check project and tag resolution.
@@ -412,16 +428,19 @@ func TestRunSummaryToday(t *testing.T) {
 	if err := json.Unmarshal([]byte(jsonOutput), &result); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
-	if len(result.Today) != 4 {
-		t.Fatalf("expected 4 today items, got %d", len(result.Today))
+	if len(result.Today) != 5 {
+		t.Fatalf("expected 5 today items, got %d", len(result.Today))
 	}
-	// task-2 should have project set.
+	// task-2 should have project and area set.
 	var found bool
 	for _, item := range result.Today {
-		if item.Title == "Morning task 2" {
+		if item.Title == "Project task" {
 			found = true
 			if item.Project != "My Project" {
 				t.Errorf("expected project 'My Project', got %q", item.Project)
+			}
+			if item.Area != "Work" {
+				t.Errorf("expected area 'Work', got %q", item.Area)
 			}
 		}
 		if item.Title == "Tagged today" && len(item.Tags) == 0 {
@@ -429,7 +448,7 @@ func TestRunSummaryToday(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("expected to find 'Morning task 2' in today items")
+		t.Error("expected to find 'Project task' in today items")
 	}
 }
 
@@ -671,11 +690,11 @@ func TestRunSummaryTodayOnlyMorning(t *testing.T) {
 
 	output := captureSummaryOutput(t, false)
 
-	if !strings.Contains(output, "Morning:") {
-		t.Error("expected Morning section")
+	if !strings.Contains(output, "Only morning") {
+		t.Error("expected morning task in output")
 	}
-	if strings.Contains(output, "Evening:") {
-		t.Error("should not have Evening section when no evening tasks")
+	if strings.Contains(output, "(evening)") {
+		t.Error("should not have (evening) marker for morning-only tasks")
 	}
 }
 
@@ -690,11 +709,11 @@ func TestRunSummaryTodayOnlyEvening(t *testing.T) {
 
 	output := captureSummaryOutput(t, false)
 
-	if strings.Contains(output, "Morning:") {
-		t.Error("should not have Morning section when no morning tasks")
+	if !strings.Contains(output, "Only evening") {
+		t.Error("expected evening task in output")
 	}
-	if !strings.Contains(output, "Evening:") {
-		t.Error("expected Evening section")
+	if !strings.Contains(output, "(evening)") {
+		t.Error("expected (evening) marker")
 	}
 }
 
@@ -881,8 +900,12 @@ func TestRunSummaryUntitledTag(t *testing.T) {
 	setupMockState(t, []map[string]any{
 		makeTag("tag-1", ""),
 	})
-	output := captureSummaryOutput(t, false)
-	if !strings.Contains(output, "(untitled)") {
-		t.Error("expected (untitled) in output for tag with empty title")
+	jsonOutput := captureSummaryOutput(t, true)
+	var result summaryOutput
+	if err := json.Unmarshal([]byte(jsonOutput), &result); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if len(result.Tags) != 1 || result.Tags[0].Title != "(untitled)" {
+		t.Error("expected (untitled) tag in JSON output")
 	}
 }
