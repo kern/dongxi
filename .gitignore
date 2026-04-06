@@ -1,6 +1,7 @@
-# Binaries
-/dongxi
+# Binaries (files only, not the dongxi/ package directory)
 /dongxi.exe
+/dongxi
+!/dongxi/
 *.test
 *.out
 
