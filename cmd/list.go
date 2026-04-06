@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/kern/dongxi/dongxi"
@@ -167,6 +168,8 @@ func runList(cmd *cobra.Command, args []string) error {
 		filtered = append(filtered, t)
 	}
 
+	sortByIndex(filtered)
+
 	if flagJSON {
 		var out []ItemOutput
 		for _, t := range filtered {
@@ -326,4 +329,11 @@ func toBool(v any) bool {
 func toStr(v any) string {
 	s, _ := v.(string)
 	return s
+}
+
+// sortByIndex sorts replayed items by their ix field (ascending).
+func sortByIndex(items []replayedItem) {
+	sort.SliceStable(items, func(i, j int) bool {
+		return toInt(items[i].fields[dongxi.FieldIndex]) < toInt(items[j].fields[dongxi.FieldIndex])
+	})
 }

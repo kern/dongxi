@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/kern/dongxi/dongxi"
@@ -225,6 +226,11 @@ func runSummary(cmd *cobra.Command, args []string) error {
 		areaMap[item.uuid] = item
 	}
 
+	// Sort areas by index.
+	sort.SliceStable(areaOrder, func(i, j int) bool {
+		return toInt(areaMap[areaOrder[i]].fields[dongxi.FieldIndex]) < toInt(areaMap[areaOrder[j]].fields[dongxi.FieldIndex])
+	})
+
 	// Collect projects grouped by area.
 	type projectInfo struct {
 		item    *replayedItem
@@ -303,6 +309,11 @@ func runSummary(cmd *cobra.Command, args []string) error {
 		areaID := firstString(item.fields[dongxi.FieldAreaIDs])
 		allProjects = append(allProjects, projectInfo{item: item, areaID: areaID, project: sp})
 	}
+
+	// Sort projects by index.
+	sort.SliceStable(allProjects, func(i, j int) bool {
+		return toInt(allProjects[i].item.fields[dongxi.FieldIndex]) < toInt(allProjects[j].item.fields[dongxi.FieldIndex])
+	})
 
 	// Count tags.
 	var tags []summaryTag

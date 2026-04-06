@@ -66,6 +66,8 @@ func runAreas(cmd *cobra.Command, args []string) error {
 		filtered = append(filtered, item)
 	}
 
+	sortByIndex(filtered)
+
 	if flagJSON {
 		var out []ItemOutput
 		for _, item := range filtered {
@@ -93,6 +95,9 @@ func runAreas(cmd *cobra.Command, args []string) error {
 			}
 			areaID := firstString(item.fields[dongxi.FieldAreaIDs])
 			areaProjects[areaID] = append(areaProjects[areaID], item)
+		}
+		for k := range areaProjects {
+			sortByIndex(areaProjects[k])
 		}
 	}
 
