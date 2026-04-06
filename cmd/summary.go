@@ -246,15 +246,18 @@ func runSummary(cmd *cobra.Command, args []string) error {
 
 		overview.TotalProjects++
 		status := dongxi.TaskStatus(toInt(item.fields[dongxi.FieldStatus]))
-		statusStr := "open"
-		switch status {
-		case dongxi.TaskStatusOpen:
-			overview.OpenProjects++
-		case dongxi.TaskStatusCompleted:
+		if status == dongxi.TaskStatusCompleted {
 			overview.CompletedProjects++
-			statusStr = "completed"
-		case dongxi.TaskStatusCancelled:
-			statusStr = "cancelled"
+			continue
+		}
+		if status != dongxi.TaskStatusOpen {
+			continue
+		}
+		overview.OpenProjects++
+
+		// Skip someday projects.
+		if dongxi.TaskDestination(toInt(item.fields[dongxi.FieldDestination])) == dongxi.TaskDestinationSomeday {
+			continue
 		}
 
 		total, completed := s.projectProgress(item.uuid)
@@ -266,7 +269,7 @@ func runSummary(cmd *cobra.Command, args []string) error {
 		sp := summaryProject{
 			UUID:           item.uuid,
 			Title:          title,
-			Status:         statusStr,
+			Status:         "open",
 			TasksTotal:     total,
 			TasksCompleted: completed,
 			TasksOpen:      total - completed,

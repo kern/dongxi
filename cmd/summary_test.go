@@ -501,11 +501,14 @@ func TestRunSummaryCompletedProjects(t *testing.T) {
 		makeProject("proj-3", "Cancelled Project", func(p map[string]any) {
 			p[dongxi.FieldStatus] = float64(dongxi.TaskStatusCancelled)
 		}),
+		makeProject("proj-4", "Someday Project", func(p map[string]any) {
+			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationSomeday)
+		}),
 	})
 
 	output := captureSummaryOutput(t, false)
 
-	if !strings.Contains(output, "Projects: 1 open, 1 completed (3 total)") {
+	if !strings.Contains(output, "Projects: 2 open, 1 completed (4 total)") {
 		t.Errorf("expected project counts, got:\n%s", output)
 	}
 
@@ -515,14 +518,17 @@ func TestRunSummaryCompletedProjects(t *testing.T) {
 	if err := json.Unmarshal([]byte(jsonOutput), &result); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
-	if result.Overview.OpenProjects != 1 {
-		t.Errorf("expected 1 open project, got %d", result.Overview.OpenProjects)
+	if result.Overview.OpenProjects != 2 {
+		t.Errorf("expected 2 open projects, got %d", result.Overview.OpenProjects)
 	}
 	if result.Overview.CompletedProjects != 1 {
 		t.Errorf("expected 1 completed project, got %d", result.Overview.CompletedProjects)
 	}
-	if result.Overview.TotalProjects != 3 {
-		t.Errorf("expected 3 total projects, got %d", result.Overview.TotalProjects)
+	if result.Overview.TotalProjects != 4 {
+		t.Errorf("expected 4 total projects, got %d", result.Overview.TotalProjects)
+	}
+	if len(result.UnassignedProjects) != 1 || result.UnassignedProjects[0].Title != "Open Project" {
+		t.Errorf("expected only 'Open Project' in listing, got %v", result.UnassignedProjects)
 	}
 }
 
@@ -842,11 +848,11 @@ func TestRunSummaryProjectStatusStrings(t *testing.T) {
 	if statusMap["Open"] != "open" {
 		t.Errorf("expected status 'open', got %s", statusMap["Open"])
 	}
-	if statusMap["Done"] != "completed" {
-		t.Errorf("expected status 'completed', got %s", statusMap["Done"])
+	if _, ok := statusMap["Done"]; ok {
+		t.Error("completed projects should not appear in listing")
 	}
-	if statusMap["Cancelled"] != "cancelled" {
-		t.Errorf("expected status 'cancelled', got %s", statusMap["Cancelled"])
+	if _, ok := statusMap["Cancelled"]; ok {
+		t.Error("cancelled projects should not appear in listing")
 	}
 }
 
