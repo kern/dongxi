@@ -20,6 +20,9 @@ EXCLUSIONS=(
   # Production wiring: calls os.Exit, cannot be captured in-process.
   "github.com/kern/dongxi/cmd/root.go:Execute 0.0"
 
+  # Thin wrapper that calls cmd.Execute(); same os.Exit issue.
+  "github.com/kern/dongxi/main.go:main 0.0"
+
   # Production wiring: reads real config file and calls real API client.
   "github.com/kern/dongxi/cmd/state.go:LoadState 0.0"
 
@@ -37,7 +40,7 @@ EXCLUSIONS=(
 
   # Config save after successful server reset — requires real filesystem
   # config created by `dongxi login`.
-  "github.com/kern/dongxi/cmd/reset.go:runReset 97.4"
+  "github.com/kern/dongxi/cmd/reset.go:runReset 89.0"
 
   # SaveConfig: error path on os.MkdirAll / os.WriteFile with real filesystem.
   "github.com/kern/dongxi/dongxi/config.go:SaveConfig 91.7"

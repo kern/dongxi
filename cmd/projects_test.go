@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/kern/dongxi/dongxi"
@@ -437,5 +438,44 @@ func TestRunProjectsLoadStateErr(t *testing.T) {
 	err := runProjects(nil, nil)
 	if err == nil || err.Error() != "mock load error" {
 		t.Fatalf("expected load error, got %v", err)
+	}
+}
+
+// Covers line 82/83: trashed project filtered in non-trash filter
+func TestRunProjectsTrashedFiltered(t *testing.T) {
+	oldFilter := flagProjectsFilter
+	oldJSON := flagJSON
+	t.Cleanup(func() {
+		flagProjectsFilter = oldFilter
+		flagJSON = oldJSON
+	})
+	flagProjectsFilter = "open"
+	flagJSON = false
+
+	setupMockState(t, []map[string]any{
+		makeProject("proj-1", "Active project"),
+		makeProject("proj-2", "Trashed project", func(p map[string]any) {
+			p[dongxi.FieldTrashed] = true
+		}),
+	})
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runProjects(nil, nil)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+	if strings.Contains(out, "Trashed project") {
+		t.Error("trashed project should not appear in active filter")
 	}
 }

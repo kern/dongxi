@@ -363,3 +363,60 @@ func TestRunReorderTodayFiltering(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// Covers lines 125-132: flagReorderBottom path with sibling comparison
+func TestRunReorderBottomWithSiblings(t *testing.T) {
+	resetReorderFlags(t)
+	setupMockState(t, []map[string]any{
+		makeTask("task-1", "First", func(p map[string]any) {
+			p[dongxi.FieldIndex] = float64(100)
+		}),
+		makeTask("task-2", "Second", func(p map[string]any) {
+			p[dongxi.FieldIndex] = float64(200)
+		}),
+	})
+	flagReorderBottom = true
+
+	oldStdout := os.Stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runReorder(nil, []string{"task-1"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Covers lines 118-124: flagReorderTop path with multiple siblings
+func TestRunReorderTopWithSiblings(t *testing.T) {
+	resetReorderFlags(t)
+	setupMockState(t, []map[string]any{
+		makeTask("task-1", "First", func(p map[string]any) {
+			p[dongxi.FieldIndex] = float64(500)
+		}),
+		makeTask("task-2", "Second", func(p map[string]any) {
+			p[dongxi.FieldIndex] = float64(100)
+		}),
+		makeTask("task-3", "Third", func(p map[string]any) {
+			p[dongxi.FieldIndex] = float64(300)
+		}),
+	})
+	flagReorderTop = true
+
+	oldStdout := os.Stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runReorder(nil, []string{"task-1"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}

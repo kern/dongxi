@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"testing"
 
@@ -460,5 +461,42 @@ func TestRunShowDestinations(t *testing.T) {
 				t.Errorf("expected destination %q in output", tt.want)
 			}
 		})
+	}
+}
+
+// Covers line 40: JSON show with checklist items
+func TestRunShowJSONWithChecklist(t *testing.T) {
+	setupMockState(t, []map[string]any{
+		makeTask("task-1", "Task with checklist"),
+		makeChecklistItem("cl-1", "Step 1", "task-1"),
+		makeChecklistItem("cl-2", "Step 2", "task-1"),
+	})
+
+	old := flagJSON
+	flagJSON = true
+	defer func() { flagJSON = old }()
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runShow(nil, []string{"task-1"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+
+	var out ItemOutput
+	if err := json.Unmarshal(buf.Bytes(), &out); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+	if len(out.Checklist) != 2 {
+		t.Errorf("expected 2 checklist items, got %d", len(out.Checklist))
 	}
 }

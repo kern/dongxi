@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/kern/dongxi/dongxi"
@@ -188,5 +189,69 @@ func TestToStringSlice(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Covers line 81-83: runTag where first arg resolves but is not a task entity
+func TestRunTagFirstArgNotTask(t *testing.T) {
+	setupMockState(t, []map[string]any{
+		makeArea("area-1", "Work"),
+		makeTag("tag-1", "Urgent"),
+	})
+
+	err := runTag(nil, []string{"area-1", "tag-1"})
+	if err == nil || !strings.Contains(err.Error(), "is not a task") {
+		t.Fatalf("expected 'is not a task' error, got %v", err)
+	}
+}
+
+// Covers line 167-169: runUntag where tag entity is resolved but tag not on task
+// (The "task does not have that tag" error from runUntag)
+func TestRunUntagTagNotOnTaskCoverage(t *testing.T) {
+	setupMockState(t, []map[string]any{
+		makeTask("task-1", "A task"),
+		makeTag("tag-1", "Urgent"),
+		makeTag("tag-2", "Other"),
+	})
+
+	// task-1 has no tags, so untag should fail
+	err := runUntag(nil, []string{"task-1", "tag-1"})
+	if err == nil || !strings.Contains(err.Error(), "does not have that tag") {
+		t.Fatalf("expected 'does not have that tag' error, got %v", err)
+	}
+}
+
+// tags.go:81 — runTag where first arg UUID not found
+func TestRunTagFirstArgNotFound(t *testing.T) {
+	setupMockState(t, []map[string]any{
+		makeTag("tag-1", "Urgent"),
+	})
+	err := runTag(nil, []string{"nonexistent", "tag-1"})
+	if err == nil {
+		t.Fatal("expected error for nonexistent first arg")
+	}
+}
+
+// tags.go:167 — untag keeps other tags in the else branch
+func TestRunUntagKeepsOtherTags(t *testing.T) {
+	setupMockState(t, []map[string]any{
+		makeTask("task-1", "Multi-tagged", func(p map[string]any) {
+			p[dongxi.FieldTagIDs] = []any{"tag-1", "tag-2"}
+		}),
+		makeTag("tag-1", "Tag A"),
+		makeTag("tag-2", "Tag B"),
+	})
+
+	oldStdout := os.Stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runUntag(nil, []string{"task-1", "tag-1"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
 	}
 }

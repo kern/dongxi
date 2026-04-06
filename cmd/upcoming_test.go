@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -277,5 +278,73 @@ func TestRunUpcomingMultipleDates(t *testing.T) {
 	buf.ReadFrom(r)
 	if !bytes.Contains(buf.Bytes(), []byte("2 task(s)")) {
 		t.Error("expected 2 tasks in upcoming")
+	}
+}
+
+// Covers lines 36,39: project/heading type filtered out of upcoming, trashed task filtered
+func TestRunUpcomingFiltersProjectAndTrashed(t *testing.T) {
+	setupMockState(t, []map[string]any{
+		makeTask("task-1", "Upcoming task", func(p map[string]any) {
+			p[dongxi.FieldScheduledDate] = float64(2000000000)
+		}),
+		makeProject("proj-1", "Some project"),
+		makeTask("task-2", "Trashed upcoming", func(p map[string]any) {
+			p[dongxi.FieldScheduledDate] = float64(2000000000)
+			p[dongxi.FieldTrashed] = true
+		}),
+	})
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runUpcoming(nil, nil)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+	if strings.Contains(out, "Some project") {
+		t.Error("project should not appear in upcoming")
+	}
+	if strings.Contains(out, "Trashed upcoming") {
+		t.Error("trashed task should not appear in upcoming")
+	}
+}
+
+// upcoming.go:36 — non-task entity (area) filtered out in upcoming
+func TestRunUpcomingFiltersNonTaskEntities(t *testing.T) {
+	setupMockState(t, []map[string]any{
+		makeTask("task-1", "Scheduled task", func(p map[string]any) {
+			p[dongxi.FieldScheduledDate] = float64(2000000000)
+		}),
+		makeArea("area-1", "Work"),
+		makeTag("tag-1", "Urgent"),
+	})
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runUpcoming(nil, nil)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+	if !strings.Contains(out, "Scheduled task") {
+		t.Error("scheduled task should appear")
 	}
 }

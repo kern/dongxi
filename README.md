@@ -2,6 +2,8 @@
 
 A comprehensive command-line interface for [Things Cloud](https://culturedcode.com/things/).
 
+> **dongxi** (东西) means "thing" or "stuff" in Mandarin Chinese.
+
 `dongxi` talks directly to the Things Cloud sync API, so you can read, create,
 edit, and manipulate your Things data from the terminal — no Things app
 required. It works offline against a local cache of your sync history and
@@ -18,6 +20,63 @@ commits changes back to the cloud.
 - **Summary view** that returns a single JSON snapshot of everything — useful
   as context for LLMs
 - **JSON output** on every command via the global `--json` flag
+- **Agent-friendly** — every command supports `--json` and the output is
+  designed for programmatic consumption by AI agents and scripts
+
+## Using dongxi with AI agents
+
+Every command outputs structured JSON via the `--json` flag, making `dongxi`
+an ideal tool for AI agents (Claude, GPT, custom agents, etc.) that need to
+read and manage your task list. The `summary` command is specifically designed
+to give an LLM a complete picture of your Things database in a single call.
+
+### Giving an agent read access to your tasks
+
+```sh
+# Feed your full task database into an LLM as context
+dongxi summary --json | llm "What should I focus on today?"
+
+# Get structured project data for planning
+dongxi projects --json | llm "Which project has the most open tasks?"
+
+# Search for relevant tasks
+dongxi query --tag work --status open --json | llm "Prioritize these tasks"
+```
+
+### Letting an agent manage your tasks
+
+```sh
+# An agent can create tasks
+dongxi create --title "Review Q3 report" --when today --tag work
+
+# Complete tasks by UUID
+dongxi complete BxK9mR4nTqWpYs1234
+
+# Batch multiple operations in a single sync (great for agent tool use)
+echo '[
+  {"op": "complete", "uuid": "abc123"},
+  {"op": "move",     "uuid": "def456", "destination": "today"},
+  {"op": "tag",      "uuid": "ghi789", "tags": ["urgent"]}
+]' | dongxi batch
+```
+
+### MCP / tool-use integration
+
+If you're building an agent with tool use (e.g. via the Anthropic API or
+Claude Desktop), you can expose `dongxi` commands as tools. The JSON output
+is already in a format that works well as tool results:
+
+```sh
+# These all return clean JSON suitable as tool call results:
+dongxi summary --json        # full database snapshot
+dongxi list --filter today --json  # today's tasks
+dongxi show <uuid> --json    # single item detail
+dongxi query --json '...'    # filtered search
+```
+
+The `summary --json` command is particularly useful as an initial context-loading
+step — it returns areas, projects, tags, inbox, and today view with task counts,
+so an agent can understand the full structure without multiple round-trips.
 
 ## Installation
 
@@ -187,6 +246,18 @@ and contains:
   "historyKey": "abc123..."
 }
 ```
+
+## How sync works
+
+When you run `dongxi login`, your credentials and a **history key** are saved
+locally. On every command that reads data, `dongxi` fetches the full commit
+history from Things Cloud and replays it into an in-memory state — there is no
+persistent local cache or database. Write commands (create, edit, complete, etc.)
+append a new commit to the cloud history, which all your Things apps will pick
+up on their next sync.
+
+The history key identifies your sync stream. If you reset it
+(`dongxi reset`), all Things clients will need to re-sync from scratch.
 
 ## UUIDs
 

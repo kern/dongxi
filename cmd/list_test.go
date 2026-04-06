@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/kern/dongxi/dongxi"
@@ -520,5 +521,110 @@ func TestReplayHistoryNonMapValue(t *testing.T) {
 	}
 	if result[0].uuid != "valid" {
 		t.Errorf("uuid = %q, want %q", result[0].uuid, "valid")
+	}
+}
+
+// Covers line 116: trashed task skipped when filter is NOT "trash"
+func TestRunListTrashedTaskSkippedInInbox(t *testing.T) {
+	resetListFlags(t)
+	setupMockState(t, []map[string]any{
+		makeTask("task-1", "Normal task"),
+		makeTask("task-2", "Trashed task", func(p map[string]any) {
+			p[dongxi.FieldTrashed] = true
+		}),
+	})
+	flagListFilter = "inbox"
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runList(nil, nil)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+	if strings.Contains(out, "Trashed task") {
+		t.Error("trashed task should be hidden in inbox filter")
+	}
+	if !strings.Contains(out, "Normal task") {
+		t.Error("normal task should appear")
+	}
+}
+
+// Covers line 127: completed task skipped when filter is not "completed" or "trash"
+func TestRunListCompletedTaskSkippedInInbox(t *testing.T) {
+	resetListFlags(t)
+	setupMockState(t, []map[string]any{
+		makeTask("task-1", "Open task"),
+		makeTask("task-2", "Completed task", func(p map[string]any) {
+			p[dongxi.FieldStatus] = float64(dongxi.TaskStatusCompleted)
+		}),
+	})
+	flagListFilter = "inbox"
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runList(nil, nil)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+	if strings.Contains(out, "Completed task") {
+		t.Error("completed task should be hidden in inbox filter")
+	}
+}
+
+// list.go:193 — empty heading group skipped
+func TestRunListProjectEmptyHeading(t *testing.T) {
+	resetListFlags(t)
+	setupMockState(t, []map[string]any{
+		makeProject("proj-1", "My Project"),
+		makeHeading("heading-1", "Empty heading", "proj-1"),
+		makeTask("task-1", "Task without heading", func(p map[string]any) {
+			p[dongxi.FieldProjectIDs] = []any{"proj-1"}
+			p[dongxi.FieldDestination] = float64(dongxi.TaskDestinationAnytime)
+		}),
+	})
+	flagListFilter = "today"
+	flagListProject = "proj-1"
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runList(nil, nil)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+	if strings.Contains(out, "Empty heading") {
+		t.Error("empty heading should not appear")
+	}
+	if !strings.Contains(out, "Task without heading") {
+		t.Error("task should appear")
 	}
 }

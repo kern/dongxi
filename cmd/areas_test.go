@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/kern/dongxi/dongxi"
@@ -481,5 +482,100 @@ func TestRunAreasWithProjectsExcludesTasks(t *testing.T) {
 	buf.ReadFrom(r)
 	if bytes.Contains(buf.Bytes(), []byte("Just a task")) {
 		t.Error("should not show regular tasks under area projects listing")
+	}
+}
+
+// Covers line 60/63: showTrashed && !showActive filters non-trashed areas
+func TestRunAreasTrashedFilter(t *testing.T) {
+	oldFilter := flagAreasFilter
+	oldJSON := flagJSON
+	t.Cleanup(func() {
+		flagAreasFilter = oldFilter
+		flagJSON = oldJSON
+	})
+	flagAreasFilter = "trash"
+	flagJSON = false
+
+	setupMockState(t, []map[string]any{
+		makeArea("area-1", "Active Area"),
+		{
+			"area-2": map[string]any{
+				dongxi.CommitKeyType:   float64(dongxi.ItemTypeCreate),
+				dongxi.CommitKeyEntity: string(dongxi.EntityArea),
+				dongxi.CommitKeyPayload: map[string]any{
+					dongxi.FieldTitle:   "Trashed Area",
+					dongxi.FieldTrashed: true,
+				},
+			},
+		},
+	})
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runAreas(nil, nil)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+	if strings.Contains(out, "Active Area") {
+		t.Error("active area should not appear in trash filter")
+	}
+}
+
+// areas.go:60 — active filter skips trashed area
+func TestRunAreasActiveSkipsTrashed(t *testing.T) {
+	oldFilter := flagAreasFilter
+	oldJSON := flagJSON
+	t.Cleanup(func() {
+		flagAreasFilter = oldFilter
+		flagJSON = oldJSON
+	})
+	flagAreasFilter = "active"
+	flagJSON = false
+
+	setupMockState(t, []map[string]any{
+		makeArea("area-1", "Active Area"),
+		{
+			"area-2": map[string]any{
+				dongxi.CommitKeyType:   float64(dongxi.ItemTypeCreate),
+				dongxi.CommitKeyEntity: string(dongxi.EntityArea),
+				dongxi.CommitKeyPayload: map[string]any{
+					dongxi.FieldTitle:   "Trashed Area",
+					dongxi.FieldTrashed: true,
+				},
+			},
+		},
+	})
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runAreas(nil, nil)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+	if strings.Contains(out, "Trashed Area") {
+		t.Error("trashed area should not appear in active filter")
+	}
+	if !strings.Contains(out, "Active Area") {
+		t.Error("active area should appear")
 	}
 }

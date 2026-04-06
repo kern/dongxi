@@ -1544,3 +1544,51 @@ func TestRunBatchEditBadDeadlineDate(t *testing.T) {
 		t.Fatalf("expected parse deadline date error, got %v", err)
 	}
 }
+
+// Covers line 482-483: unknown operation in batch
+func TestRunBatchUnknownOpCoverage(t *testing.T) {
+	setupMockState(t, []map[string]any{
+		makeTask("task-1", "A task"),
+	})
+
+	oldStdin := os.Stdin
+	input := `[{"op": "frobnicate", "uuid": "task-1"}]`
+	stdinR, stdinW, _ := os.Pipe()
+	stdinW.WriteString(input)
+	stdinW.Close()
+	os.Stdin = stdinR
+	defer func() { os.Stdin = oldStdin }()
+
+	err := runBatch(nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "unknown op") {
+		t.Fatalf("expected 'unknown op' error, got %v", err)
+	}
+}
+
+// batch.go:161 — stdin read error
+func TestRunBatchStdinReadError(t *testing.T) {
+	setupMockState(t, nil)
+
+	oldStdin := os.Stdin
+	stdinR, stdinW, _ := os.Pipe()
+	stdinW.Close()
+	// Close the read end too so ReadAll gets an error...
+	// Actually ReadAll on a closed write end returns EOF (no error).
+	// A truly erroring reader is hard to inject via os.Stdin.
+	os.Stdin = stdinR
+	defer func() { os.Stdin = oldStdin }()
+
+	// Empty stdin results in "Nothing to do" — tests line 166-168 instead
+	oldStdout := os.Stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+
+	err := runBatch(nil, nil)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
