@@ -53,6 +53,10 @@ func (m *mockClient) GetHistoryItems(historyKey string) ([]map[string]any, error
 	return nil, nil
 }
 
+func (m *mockClient) Email() string {
+	return "test@test.com"
+}
+
 // mockErrorStateLoader returns an error from LoadState.
 type mockErrorStateLoader struct {
 	err error

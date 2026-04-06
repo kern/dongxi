@@ -88,6 +88,7 @@ func (m *commitCapturingMock) GetAccount(email string) (*dongxi.Account, error) 
 func (m *commitCapturingMock) GetHistoryItems(historyKey string) ([]map[string]any, error) {
 	return m.inner.GetHistoryItems(historyKey)
 }
+func (m *commitCapturingMock) Email() string { return m.inner.Email() }
 
 // mockStateLoaderWithClient uses a specific CloudClient implementation.
 type mockStateLoaderWithClient struct {

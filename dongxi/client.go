@@ -31,6 +31,11 @@ func NewClient(email, password string) *Client {
 	}
 }
 
+// Email returns the email associated with this client.
+func (c *Client) Email() string {
+	return c.email
+}
+
 func (c *Client) newRequest(method, path string, body any) (*http.Request, error) {
 	u := c.BaseURL + path
 

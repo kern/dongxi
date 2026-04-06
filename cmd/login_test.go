@@ -31,6 +31,7 @@ func (m *loginMockClient) ResetHistory(email string) (*dongxi.ResetResponse, err
 func (m *loginMockClient) GetHistoryItems(historyKey string) ([]map[string]any, error) {
 	return nil, nil
 }
+func (m *loginMockClient) Email() string { return "test@test.com" }
 
 // overrideLoginDeps replaces newClientFunc and saveConfigFunc for a test,
 // restoring originals via t.Cleanup.

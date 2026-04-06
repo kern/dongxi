@@ -18,6 +18,7 @@ type CloudClient interface {
 	ResetHistory(email string) (*dongxi.ResetResponse, error)
 	GetAccount(email string) (*dongxi.Account, error)
 	GetHistoryItems(historyKey string) ([]map[string]any, error)
+	Email() string
 }
 
 // StateLoader loads the full Things Cloud state. Tests can replace this

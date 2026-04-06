@@ -10,6 +10,13 @@ import (
 	"testing"
 )
 
+func TestClientEmail(t *testing.T) {
+	client := NewClient("user@example.com", "pass")
+	if got := client.Email(); got != "user@example.com" {
+		t.Errorf("Email() = %q, want %q", got, "user@example.com")
+	}
+}
+
 func TestGetAccount(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
