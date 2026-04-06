@@ -40,12 +40,37 @@ func (realStateLoader) LoadState() (*thingsState, CloudClient, string, error) {
 		return nil, nil, "", fmt.Errorf("fetch account: %w", err)
 	}
 
-	commits, err := client.GetHistoryItems(acct.HistoryKey)
+	// Load local cache and do incremental sync.
+	cache, err := dongxi.LoadCache()
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("load cache: %w", err)
+	}
+
+	// Invalidate cache if history key changed (e.g. after reset).
+	if cache.HistoryKey != acct.HistoryKey {
+		cache = &dongxi.Cache{}
+	}
+
+	// Fetch only new items from where the cache left off.
+	newItems, err := client.GetHistoryItemsFrom(acct.HistoryKey, cache.ItemCount)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("fetch history: %w", err)
 	}
 
-	items := replayHistory(commits)
+	// Merge and persist.
+	if len(newItems) > 0 {
+		cache.HistoryKey = acct.HistoryKey
+		cache.Items = append(cache.Items, newItems...)
+		cache.ItemCount = len(cache.Items)
+		// Best-effort save — don't fail the command if cache write fails.
+		_ = dongxi.SaveCache(cache)
+	} else if cache.HistoryKey == "" {
+		// First run with empty history — save the key so we don't re-fetch.
+		cache.HistoryKey = acct.HistoryKey
+		_ = dongxi.SaveCache(cache)
+	}
+
+	items := replayHistory(cache.Items)
 	s := buildState(items)
 	return s, client, acct.HistoryKey, nil
 }

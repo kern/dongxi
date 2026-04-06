@@ -415,6 +415,33 @@ func TestGetHistoryDoError(t *testing.T) {
 	}
 }
 
+func TestGetHistoryItemsFromStartIndex(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		startIndex := r.URL.Query().Get("start-index")
+		var resp HistoryItems
+		if startIndex == "5" {
+			resp.Items = []map[string]any{
+				{"task-6": map[string]any{"t": float64(0), "e": "Task6", "p": map[string]any{"tt": "Sixth"}}},
+			}
+		} else {
+			resp.Items = nil
+		}
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	client := NewClient("test@example.com", "secret")
+	client.BaseURL = srv.URL + "/version/1"
+
+	items, err := client.GetHistoryItemsFrom("hk-123", 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("got %d items, want 1", len(items))
+	}
+}
+
 // --- GetHistoryItems error paths ---
 
 func TestGetHistoryItemsNewRequestError(t *testing.T) {

@@ -250,11 +250,18 @@ and contains:
 ## How sync works
 
 When you run `dongxi login`, your credentials and a **history key** are saved
-locally. On every command that reads data, `dongxi` fetches the full commit
-history from Things Cloud and replays it into an in-memory state — there is no
-persistent local cache or database. Write commands (create, edit, complete, etc.)
-append a new commit to the cloud history, which all your Things apps will pick
-up on their next sync.
+locally. On every command that reads data, `dongxi` fetches the commit history
+from Things Cloud, replays it into an in-memory state, and caches the raw
+history log to disk at `~/.config/dongxi/history.json`. On subsequent runs,
+only new commits are fetched from the cloud — the cached history is reused,
+making repeated commands much faster.
+
+Write commands (create, edit, complete, etc.) append a new commit to the cloud
+history, which all your Things apps will pick up on their next sync.
+
+The cache is automatically invalidated when the history key changes (e.g. after
+`dongxi reset`). You can safely delete `history.json` at any time — it will be
+rebuilt on the next command.
 
 The history key identifies your sync stream. If you reset it
 (`dongxi reset`), all Things clients will need to re-sync from scratch.

@@ -119,8 +119,13 @@ func (c *Client) GetHistory(historyKey string) (*HistoryInfo, error) {
 
 // GetHistoryItems fetches all history items, handling pagination automatically.
 func (c *Client) GetHistoryItems(historyKey string) ([]map[string]any, error) {
+	return c.GetHistoryItemsFrom(historyKey, 0)
+}
+
+// GetHistoryItemsFrom fetches history items starting from the given index.
+func (c *Client) GetHistoryItemsFrom(historyKey string, startIndex int) ([]map[string]any, error) {
 	var all []map[string]any
-	start := 0
+	start := startIndex
 	for {
 		path := fmt.Sprintf("/history/%s/items?start-index=%d", url.PathEscape(historyKey), start)
 		req, err := c.newRequest("GET", path, nil)

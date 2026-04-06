@@ -13,40 +13,72 @@ set -euo pipefail
 # If no coverage file is provided, one is generated via `go test`.
 
 # ── Exclusion list ────────────────────────────────────────────────────────────
-# Format: "file:function min_pct"
+# Format: "path/file.go:function min_pct"
+# Path is relative to the module root (no module prefix, no line numbers).
 # Keep sorted by package then function.
 
 EXCLUSIONS=(
   # Production wiring: calls os.Exit, cannot be captured in-process.
-  "github.com/kern/dongxi/cmd/root.go:Execute 0.0"
+  "cmd/root.go:Execute 0.0"
 
   # Thin wrapper that calls cmd.Execute(); same os.Exit issue.
-  "github.com/kern/dongxi/main.go:main 0.0"
+  "main.go:main 0.0"
 
   # Production wiring: reads real config file and calls real API client.
-  "github.com/kern/dongxi/cmd/state.go:LoadState 0.0"
+  "cmd/state.go:LoadState 0.0"
 
   # Dead-code defensive branches inside csv.Writer (buffered; Write never
   # errors) and unreachable return after validated format switch.
-  "github.com/kern/dongxi/cmd/export.go:runExport 96.8"
-  "github.com/kern/dongxi/cmd/export.go:writeCSV 90.0"
+  "cmd/export.go:runExport 96.8"
+  "cmd/export.go:writeCSV 90.0"
 
   # Dead-code default case after validOps pre-check, and nil-guard on
   # resolved UUID that can never be nil.
-  "github.com/kern/dongxi/cmd/batch.go:runBatch 98.8"
+  "cmd/batch.go:runBatch 98.8"
 
   # Panic branch on rand.Read failure — intentionally untestable.
-  "github.com/kern/dongxi/cmd/create.go:newUUID 94.4"
+  "cmd/create.go:newUUID 94.4"
 
   # Config save after successful server reset — requires real filesystem
   # config created by `dongxi login`.
-  "github.com/kern/dongxi/cmd/reset.go:runReset 89.0"
+  "cmd/reset.go:runReset 89.0"
 
   # SaveConfig: error path on os.MkdirAll / os.WriteFile with real filesystem.
-  "github.com/kern/dongxi/dongxi/config.go:SaveConfig 91.7"
+  "dongxi/config.go:SaveConfig 91.7"
+
+  # CachePath: error path on ConfigDir (os.UserHomeDir failure).
+  "dongxi/cache.go:CachePath 75.0"
+
+  # LoadCache: error path on CachePath (ConfigDir / os.UserHomeDir failure).
+  "dongxi/cache.go:LoadCache 91.7"
+
+  # SaveCache: error paths on ConfigDir, os.MkdirAll, os.WriteFile.
+  "dongxi/cache.go:SaveCache 66.7"
 )
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+MODULE_PREFIX=""
+
+detect_module_prefix() {
+  if [[ -f go.mod ]]; then
+    MODULE_PREFIX=$(head -1 go.mod | awk '{print $2}')
+  fi
+}
+
+# Strip the module prefix from a full package path to get the relative path.
+# e.g. "github.com/kern/dongxi/cmd/root.go" → "cmd/root.go"
+#      "github.com/kern/dongxi/main.go"     → "main.go"
+strip_module() {
+  local full="$1"
+  if [[ -n "$MODULE_PREFIX" && "$full" == "$MODULE_PREFIX"/* ]]; then
+    echo "${full#"$MODULE_PREFIX"/}"
+  elif [[ -n "$MODULE_PREFIX" && "$full" == "$MODULE_PREFIX" ]]; then
+    echo ""
+  else
+    echo "$full"
+  fi
+}
 
 # Look up a key in EXCLUSIONS. Prints the min_pct if found, empty string if not.
 lookup_exclusion() {
@@ -63,6 +95,8 @@ lookup_exclusion() {
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
+detect_module_prefix
 
 COVERFILE="${1:-}"
 GENERATED=0
@@ -82,7 +116,7 @@ fi
 # Parse `go tool cover -func` output and check each function.
 # Output format per line:
 #   github.com/kern/dongxi/cmd/root.go:23:	Execute		0.0%
-# The location is "pkg/file.go:linenum:" — we need "pkg/file.go:funcName" as key.
+# The location is "pkg/file.go:linenum:" — we need "path/file.go:funcName" as key.
 
 TMPFAILS="$(mktemp)"
 cleanup() { rm -f "$TMPFAILS"; [[ "$GENERATED" -eq 1 ]] && rm -f "$COVERFILE"; true; }
@@ -106,7 +140,10 @@ go tool cover -func="$COVERFILE" | while IFS= read -r line; do
   # location = "pkg/file.go:linenum:" — strip trailing colon and line number
   location="${location%:}"       # remove trailing colon → pkg/file.go:linenum
   file="${location%:*}"          # remove :linenum → pkg/file.go
-  key="${file}:${func_name}"
+
+  # Convert to relative path for exclusion lookup
+  rel_file=$(strip_module "$file")
+  key="${rel_file}:${func_name}"
 
   min=$(lookup_exclusion "$key")
 
